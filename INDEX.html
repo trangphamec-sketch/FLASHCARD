@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlashMaster - Học Flashcard Thông Minh</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom utilities for 3D Flashcard Flip and Match Game Animations */
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .perspective-1000 {
+      perspective: 1200px;
+    }
+
+    .transform-style-3d {
+      transform-style: preserve-3d;
+      transition: transform 0.55s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .backface-hidden {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    .rotate-y-180 {
+      transform: rotateY(180deg);
+    }
+
+    /* Shake animation for wrong match */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+
+    .animate-shake {
+      animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    /* Pop-out animation for correct match */
+    @keyframes matchSuccess {
+      0% { transform: scale(1); opacity: 1; }
+      40% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(0.75); opacity: 0; }
+    }
+
+    .animate-match-out {
+      animation: matchSuccess 0.35s ease-out forwards;
+      pointer-events: none;
+    }
+
+    /* Subtle slide-in animation for views & toasts */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-up {
+      animation: fadeSlideUp 0.25s ease-out forwards;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- ==================== TOP NAVIGATION BAR ==================== -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <!-- Logo -->
+      <button onclick="navigateHome()" class="flex items-center gap-2.5 group focus:outline-none">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/30 group-hover:scale-105 transition-transform">
+          <i class="fa-solid fa-layer-group text-lg"></i>
+        </div>
+        <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
+          FlashMaster
+        </span>
+      </button>
+
+      <!-- Right Actions -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button onclick="openDeckEditor()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm shadow-indigo-500/20 transition-all active:scale-95">
+          <i class="fa-solid fa-plus"></i>
+          <span class="hidden sm:inline">Tạo bộ thẻ</span>
+        </button>
+
+        <button id="themeToggleBtn" onclick="toggleTheme()" title="Chuyển chế độ Sáng/Tối" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-amber-400 flex items-center justify-center transition-colors">
+          <i id="themeIcon" class="fa-solid fa-moon text-base"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT CONTAINER ==================== -->
+  <main id="appRoot" class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <!-- Dynamic views will be rendered here by JavaScript -->
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-5 mt-12 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p><strong class="text-indigo-600 dark:text-indigo-400">FlashMaster</strong> — Ứng dụng học từ vựng & ghi nhớ thông minh.</p>
+      <p>Dữ liệu được lưu tự động trên trình duyệt của bạn.</p>
+    </div>
+  </footer>
+
+  <!-- ==================== CUSTOM MODAL (CONFIRM / DIALOG) ==================== -->
+  <div id="customModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-up">
+      <div class="flex items-start gap-4">
+        <div id="modalIconWrap" class="w-11 h-11 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+          <i id="modalIcon" class="fa-solid fa-triangle-exclamation text-lg"></i>
+        </div>
+        <div class="flex-1">
+          <h3 id="modalTitle" class="text-lg font-bold text-slate-900 dark:text-white">Xác nhận</h3>
+          <p id="modalMessage" class="mt-1.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+        </div>
+      </div>
+      <div class="mt-6 flex items-center justify-end gap-2.5">
+        <button id="modalCancelBtn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          Hủy
+        </button>
+        <button id="modalConfirmBtn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-colors">
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none max-w-xs sm:max-w-sm w-full"></div>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script>
+    /*************************************************************************
+     * 1. INITIAL SAMPLE DATA & STATE MANAGEMENT
+     *************************************************************************/
+    const STORAGE_KEY = 'flashmaster_decks_v1';
+    const THEME_KEY = 'flashmaster_theme_v1';
+
+    /**
+     * Generates a unique ID string
+     */
+    function generateId() {
+      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+    }
+
+    /**
+     * Default sample decks pre-loaded on first visit
+     */
+    function getSampleDecks() {
+      return [
+        {
+          id: 'deck_toeic_sample',
+          title: 'Từ vựng Tiếng Anh TOEIC Thông Dụng',
+          description: '10 từ vựng cốt lõi thường xuyên xuất hiện trong bài thi TOEIC và giao tiếp công sở.',
+          createdAt: Date.now() - 86400000,
+          bestMatchTime: null,
+          cards: [
+            { id: 't1', term: 'Accommodate', definition: 'Đáp ứng, cung cấp chỗ ở / điều chỉnh cho phù hợp', starred: false, mastered: false },
+            { id: 't2', term: 'Collaborate', definition: 'Hợp tác, cộng tác làm việc chung', starred: true, mastered: false },
+            { id: 't3', term: 'Deadline', definition: 'Hạn chót hoàn thành công việc', starred: false, mastered: true },
+            { id: 't4', term: 'Evaluate', definition: 'Đánh giá, định giá hiệu quả', starred: false, mastered: false },
+            { id: 't5', term: 'Implement', definition: 'Triển khai, thực hiện kế hoạch', starred: true, mastered: false },
+            { id: 't6', term: 'Negotiate', definition: 'Đàm phán, thương lượng hợp đồng', starred: false, mastered: false },
+            { id: 't7', term: 'Postpone', definition: 'Trì hoãn, dời lại sang thời điểm khác', starred: false, mastered: true },
+            { id: 't8', term: 'Reimburse', definition: 'Hoàn trả tiền, bồi hoàn chi phí', starred: false, mastered: false },
+            { id: 't9', term: 'Schedule', definition: 'Lịch trình, lên kế hoạch thời gian', starred: false, mastered: false },
+            { id: 't10', term: 'Unanimous', definition: 'Nhất trí hoàn toàn, đồng lòng', starred: false, mastered: false }
+          ]
+        },
+        {
+          id: 'deck_phrasal_sample',
+          title: 'Cụm Động Từ (Phrasal Verbs) Thiết Yếu',
+          description: '8 cụm động từ tiếng Anh cực kỳ thông dụng trong giao tiếp hàng ngày và công việc.',
+          createdAt: Date.now() - 43200000,
+          bestMatchTime: null,
+          cards: [
+            { id: 'p1', term: 'Carry out', definition: 'Tiến hành, thực hiện (kế hoạch, nghiên cứu)', starred: false, mastered: false },
+            { id: 'p2', term: 'Figure out', definition: 'Tìm ra cách giải quyết, hiểu ra vấn đề', starred: true, mastered: false },
+            { id: 'p3', term: 'Give up', definition: 'Từ bỏ, bỏ cuộc', starred: false, mastered: true },
+            { id: 'p4', term: 'Look forward to', definition: 'Mong đợi, hào hứng chờ đón điều gì đó', starred: false, mastered: false },
+            { id: 'p5', term: 'Put off', definition: 'Trì hoãn, hoãn lại', starred: false, mastered: false },
+            { id: 'p6', term: 'Run out of', definition: 'Cạn kiệt, hết sạch thứ gì đó', starred: false, mastered: false },
+            { id: 'p7', term: 'Take over', definition: 'Tiếp quản, đảm nhận vị trí hoặc công việc', starred: true, mastered: false },
+            { id: 'p8', term: 'Turn down', definition: 'Từ chối (lời mời, đề nghị) hoặc vặn nhỏ âm lượng', starred: false, mastered: false }
+          ]
+        }
+      ];
+    }
+
+    // Global App State
+    const appState = {
+      decks: [],
+      view: 'home', // 'home' | 'deck' | 'learn' | 'test' | 'match' | 'editor'
+      activeDeckId: null,
+      searchQuery: '',
+
+      // Flashcards state
+      fcIndex: 0,
+      fcFlipped: false,
+      fcShuffled: false,
+      fcOnlyStarred: false,
+      fcCardOrder: [], // array of card IDs
+      termListFilter: 'all', // 'all' | 'starred'
+
+      // Learn mode state
+      learnQueue: [], // array of card IDs remaining to master
+      learnMasteredIds: [],
+      learnCurrentCardId: null,
+      learnOptions: [],
+      learnAnswered: false,
+      learnSelectedId: null,
+      learnTotalAttempts: 0,
+      learnCorrectAttempts: 0,
+
+      // Test mode state
+      testQuestions: [],
+      testSubmitted: false,
+      testScore: 0,
+
+      // Match game state
+      matchTiles: [],
+      matchSelectedTileIndex: null,
+      matchMatchedPairs: 0,
+      matchTotalPairs: 0,
+      matchStartTime: null,
+      matchElapsed: 0,
+      matchTimerId: null,
+      matchFinished: false,
+      matchIsNewRecord: false,
+      matchLock: false,
+
+      // Editor state
+      editingDeckId: null,
+      editorTitle: '',
+      editorDesc: '',
+      editorCards: [],
+      showImportBox: false
+    };
+
+    /*************************************************************************
+     * 2. PERSISTENCE (LOCALSTORAGE) & THEME HANDLING
+     *************************************************************************/
+    function loadDecks() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            appState.decks = parsed;
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi đọc localStorage:', err);
+      }
+      appState.decks = getSampleDecks();
+      saveDecks();
+    }
+
+    function saveDecks() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.decks));
+      } catch (err) {
+        console.error('Lỗi lưu localStorage:', err);
+        showToast('Không thể lưu dữ liệu vào trình duyệt.', 'error');
+      }
+    }
+
+    function initTheme() {
+      try {
+        const saved = localStorage.getItem(THEME_KEY);
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = saved ? saved === 'dark' : prefersDark;
+        applyTheme(isDark);
+      } catch (err) {
+        applyTheme(false);
+      }
+    }
+
+    function applyTheme(isDark) {
+      const html = document.documentElement;
+      const icon = document.getElementById('themeIcon');
+      if (isDark) {
+        html.classList.add('dark');
+        if (icon) icon.className = 'fa-solid fa-sun text-base';
+      } else {
+        html.classList.remove('dark');
+        if (icon) icon.className = 'fa-solid fa-moon text-base';
+      }
+      try {
+        localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      } catch (e) {}
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      applyTheme(!isDark);
+    }
+
+    /*************************************************************************
+     * 3. UI HELPERS: TOAST, CUSTOM MODAL, SPEECH API, ESCAPE HTML
+     *************************************************************************/
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-800 dark:bg-indigo-600 text-white',
+        warning: 'bg-amber-500 text-white'
+      };
+      const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-xmark',
+        info: 'fa-circle-info',
+        warning: 'fa-triangle-exclamation'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-fade-up ${colors[type] || colors.info}`;
+      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 260);
+      }, 2800);
+    }
+
+    function showConfirmModal({ title, message, confirmText = 'Xác nhận', confirmClass = 'bg-rose-600 hover:bg-rose-700', onConfirm }) {
+      const modal = document.getElementById('customModal');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      const confirmBtn = document.getElementById('modalConfirmBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+
+      confirmBtn.textContent = confirmText;
+      confirmBtn.className = `px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm transition-colors ${confirmClass}`;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const close = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+
+      cancelBtn.onclick = close;
+      modal.onclick = (e) => {
+        if (e.target === modal) close();
+      };
+      confirmBtn.onclick = () => {
+        close();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+    }
+
+    /**
+     * Web Speech API pronunciation (English US default)
+     */
+    function speakText(text, event = null) {
+      if (event) event.stopPropagation();
+      try {
+        if (!('speechSynthesis' in window)) {
+          showToast('Trình duyệt của bạn không hỗ trợ phát âm.', 'warning');
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.92;
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('Speech API error:', err);
+        showToast('Không thể phát âm lúc này.', 'error');
+      }
+    }
+
+    function getActiveDeck() {
+      return appState.decks.find(d => d.id === appState.activeDeckId) || null;
+    }
+
+    function stopMatchTimer() {
+      if (appState.matchTimerId) {
+        clearInterval(appState.matchTimerId);
+        appState.matchTimerId = null;
+      }
+    }
+
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    /*************************************************************************
+     * 4. NAVIGATION CONTROLLERS
+     *************************************************************************/
+    function navigateHome() {
+      stopMatchTimer();
+      appState.view = 'home';
+      appState.activeDeckId = null;
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openDeck(deckId) {
+      stopMatchTimer();
+      const deck = appState.decks.find(d => d.id === deckId);
+      if (!deck) return navigateHome();
+
+      appState.activeDeckId = deckId;
+      appState.view = 'deck';
+      appState.fcIndex = 0;
+      appState.fcFlipped = false;
+      appState.fcShuffled = false;
+      appState.fcOnlyStarred = false;
+      appState.termListFilter = 'all';
+      rebuildFlashcardOrder();
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openDeckEditor(deckId = null) {
+      stopMatchTimer();
+      appState.view = 'editor';
+      appState.showImportBox = false;
+
+      if (deckId) {
+        const deck = appState.decks.find(d => d.id === deckId);
+        if (deck) {
+          appState.editingDeckId = deck.id;
+          appState.editorTitle = deck.title;
+          appState.editorDesc = deck.description || '';
+          appState.editorCards = deck.cards.map(c => ({ ...c }));
+        }
+      } else {
+        appState.editingDeckId = null;
+        appState.editorTitle = '';
+        appState.editorDesc = '';
+        appState.editorCards = [
+          { id: generateId(), term: '', definition: '', starred: false, mastered: false },
+          { id: generateId(), term: '', definition: '', starred: false, mastered: false },
+          { id: generateId(), term: '', definition: '', starred: false, mastered: false }
+        ];
+      }
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteDeck(deckId, event) {
+      if (event) event.stopPropagation();
+      const deck = appState.decks.find(d => d.id === deckId);
+      if (!deck) return;
+
+      showConfirmModal({
+        title: 'Xóa bộ học phần?',
+        message: `Bạn có chắc chắn muốn xóa bộ thẻ "${deck.title}" không? Hành động này không thể hoàn tác.`,
+        confirmText: 'Xóa bộ thẻ',
+        onConfirm: () => {
+          appState.decks = appState.decks.filter(d => d.id !== deckId);
+          saveDecks();
+          showToast('Đã xóa bộ học phần.', 'success');
+          if (appState.activeDeckId === deckId) {
+            navigateHome();
+          } else {
+            render();
+          }
+        }
+      });
+    }
+
+    /*************************************************************************
+     * 5. HOME VIEW (LIBRARY)
+     *************************************************************************/
+    function handleSearchInput(val) {
+      appState.searchQuery = val;
+      renderDeckGridOnly();
+    }
+
+    function renderHomeView() {
+      const totalCards = appState.decks.reduce((sum, d) => sum + d.cards.length, 0);
+      const totalMastered = appState.decks.reduce((sum, d) => sum + d.cards.filter(c => c.mastered).length, 0);
+
+      return `
+        <div class="space-y-7 animate-fade-up">
+          <!-- Hero & Search Bar -->
+          <div class="bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/20">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Thư viện học tập của bạn</h1>
+                <p class="mt-1.5 text-indigo-100 text-sm sm:text-base max-w-xl">
+                  Ôn tập hiệu quả với thẻ ghi nhớ 3D, trắc nghiệm thông minh, bài kiểm tra và trò chơi ghép thẻ tốc độ.
+                </p>
+                <div class="mt-4 flex flex-wrap items-center gap-3 text-xs sm:text-sm font-medium">
+                  <span class="px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm">
+                    <i class="fa-solid fa-folder-open mr-1.5"></i>${appState.decks.length} bộ thẻ
+                  </span>
+                  <span class="px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm">
+                    <i class="fa-solid fa-clone mr-1.5"></i>${totalCards} thuật ngữ
+                  </span>
+                  <span class="px-3 py-1.5 rounded-full bg-emerald-400/20 text-emerald-100 backdrop-blur-sm">
+                    <i class="fa-solid fa-check-double mr-1.5"></i>Đã thuộc ${totalMastered}/${totalCards}
+                  </span>
+                </div>
+              </div>
+              <div class="shrink-0">
+                <button onclick="openDeckEditor()" class="w-full md:w-auto px-5 py-3 rounded-2xl bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-plus-circle text-base"></i>
+                  Tạo bộ học phần mới
+                </button>
+              </div>
+            </div>
+
+            <!-- Search input -->
+            <div class="mt-6 relative max-w-xl">
+              <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-indigo-200"></i>
+              <input
+                type="text"
+                id="deckSearchInput"
+                value="${escapeHtml(appState.searchQuery)}"
+                oninput="handleSearchInput(this.value)"
+                placeholder="Tìm kiếm bộ thẻ theo tên hoặc mô tả..."
+                class="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/15 hover:bg-white/20 focus:bg-white text-white focus:text-slate-900 placeholder-indigo-200 focus:placeholder-slate-400 border border-white/20 focus:border-white focus:outline-none transition-all text-sm sm:text-base"
+              />
+            </div>
+          </div>
+
+          <!-- Deck Grid Container -->
+          <div id="deckGridContainer">
+            ${getDeckGridHTML()}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDeckGridOnly() {
+      const el = document.getElementById('deckGridContainer');
+      if (el) el.innerHTML = getDeckGridHTML();
+    }
+
+    function getDeckGridHTML() {
+      const q = appState.searchQuery.trim().toLowerCase();
+      const filtered = appState.decks.filter(d =>
+        d.title.toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q)
+      );
+
+      if (filtered.length === 0) {
+        return `
+          <div class="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center text-2xl mb-4">
+              <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white">
+              ${q ? 'Không tìm thấy bộ thẻ phù hợp' : 'Chưa có bộ học phần nào'}
+            </h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              ${q ? 'Thử tìm kiếm với từ khóa khác nhé.' : 'Bắt đầu tạo bộ thẻ đầu tiên để học ngay hôm nay!'}
+            </p>
+            ${!q ? `
+              <button onclick="openDeckEditor()" class="mt-5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors">
+                <i class="fa-solid fa-plus mr-1.5"></i>Tạo bộ thẻ mới
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          ${filtered.map(deck => {
+            const total = deck.cards.length;
+            const mastered = deck.cards.filter(c => c.mastered).length;
+            const pct = total > 0 ? Math.round((mastered / total) * 100) : 0;
+            const starredCount = deck.cards.filter(c => c.starred).length;
+
+            return `
+              <div onclick="openDeck('${deck.id}')" class="group cursor-pointer bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-200 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-start justify-between gap-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
+                      ${total} thuật ngữ
+                    </span>
+                    <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button onclick="event.stopPropagation(); openDeckEditor('${deck.id}')" title="Chỉnh sửa" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-pen text-xs"></i>
+                      </button>
+                      <button onclick="deleteDeck('${deck.id}', event)" title="Xóa bộ thẻ" class="w-8 h-8 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 class="mt-3 text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                    ${escapeHtml(deck.title)}
+                  </h3>
+                  <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5rem]">
+                    ${escapeHtml(deck.description || 'Không có mô tả.')}
+                  </p>
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                  <div class="flex items-center justify-between text-xs font-medium">
+                    <span class="text-slate-600 dark:text-slate-300">Đã thuộc: <strong>${mastered}/${total}</strong> (${pct}%)</span>
+                    <div class="flex items-center gap-2.5">
+                      ${starredCount > 0 ? `<span class="text-amber-500" title="Thẻ gắn sao"><i class="fa-solid fa-star mr-0.5"></i>${starredCount}</span>` : ''}
+                      ${deck.bestMatchTime !== null ? `<span class="text-emerald-600 dark:text-emerald-400" title="Kỷ lục Ghép thẻ"><i class="fa-solid fa-trophy mr-0.5"></i>${deck.bestMatchTime.toFixed(1)}s</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 6. DECK DETAIL VIEW + MODE 1: FLASHCARDS (3D FLIP)
+     *************************************************************************/
+    function rebuildFlashcardOrder() {
+      const deck = getActiveDeck();
+      if (!deck) return;
+      let cards = deck.cards;
+      if (appState.fcOnlyStarred) {
+        const starred = cards.filter(c => c.starred);
+        if (starred.length > 0) {
+          cards = starred;
+        } else {
+          appState.fcOnlyStarred = false;
+        }
+      }
+      let ids = cards.map(c => c.id);
+      if (appState.fcShuffled) {
+        ids = shuffleArray(ids);
+      }
+      appState.fcCardOrder = ids;
+      if (appState.fcIndex >= ids.length) appState.fcIndex = 0;
+      appState.fcFlipped = false;
+    }
+
+    function flipFlashcard() {
+      appState.fcFlipped = !appState.fcFlipped;
+      const inner = document.getElementById('flashcardInner');
+      if (inner) {
+        inner.classList.toggle('rotate-y-180', appState.fcFlipped);
+      }
+    }
+
+    function nextFlashcard() {
+      if (appState.fcCardOrder.length === 0) return;
+      appState.fcIndex = (appState.fcIndex + 1) % appState.fcCardOrder.length;
+      appState.fcFlipped = false;
+      render();
+    }
+
+    function prevFlashcard() {
+      if (appState.fcCardOrder.length === 0) return;
+      appState.fcIndex = (appState.fcIndex - 1 + appState.fcCardOrder.length) % appState.fcCardOrder.length;
+      appState.fcFlipped = false;
+      render();
+    }
+
+    function toggleShuffleFlashcards() {
+      appState.fcShuffled = !appState.fcShuffled;
+      appState.fcIndex = 0;
+      rebuildFlashcardOrder();
+      showToast(appState.fcShuffled ? 'Đã bật trộn thẻ ngẫu nhiên' : 'Đã trở về thứ tự ban đầu', 'info');
+      render();
+    }
+
+    function toggleStarredOnlyFlashcards() {
+      const deck = getActiveDeck();
+      if (!deck) return;
+      const starredCount = deck.cards.filter(c => c.starred).length;
+      if (!appState.fcOnlyStarred && starredCount === 0) {
+        showToast('Chưa có thẻ nào được gắn sao để lọc.', 'warning');
+        return;
+      }
+      appState.fcOnlyStarred = !appState.fcOnlyStarred;
+      appState.fcIndex = 0;
+      rebuildFlashcardOrder();
+      render();
+    }
+
+    function toggleCardStar(cardId, event) {
+      if (event) event.stopPropagation();
+      const deck = getActiveDeck();
+      if (!deck) return;
+      const card = deck.cards.find(c => c.id === cardId);
+      if (!card) return;
+      card.starred = !card.starred;
+      saveDecks();
+
+      // If filtering by starred and user unstarred the last starred card
+      if (appState.fcOnlyStarred && deck.cards.filter(c => c.starred).length === 0) {
+        appState.fcOnlyStarred = false;
+        rebuildFlashcardOrder();
+      }
+      render();
+    }
+
+    function setCardMastered(cardId, isMastered, autoNext = true) {
+      const deck = getActiveDeck();
+      if (!deck) return;
+      const card = deck.cards.find(c => c.id === cardId);
+      if (!card) return;
+      card.mastered = isMastered;
+      saveDecks();
+      if (autoNext && appState.fcCardOrder.length > 1) {
+        appState.fcIndex = (appState.fcIndex + 1) % appState.fcCardOrder.length;
+        appState.fcFlipped = false;
+      }
+      render();
+    }
+
+    function resetDeckProgress() {
+      const deck = getActiveDeck();
+      if (!deck) return;
+      showConfirmModal({
+        title: 'Đặt lại tiến độ học?',
+        message: 'Tất cả thẻ trong bộ này sẽ được chuyển về trạng thái "Chưa thuộc".',
+        confirmText: 'Đặt lại',
+        confirmClass: 'bg-indigo-600 hover:bg-indigo-700',
+        onConfirm: () => {
+          deck.cards.forEach(c => c.mastered = false);
+          saveDecks();
+          showToast('Đã đặt lại tiến độ học tập.', 'success');
+          render();
+        }
+      });
+    }
+
+    function setTermListFilter(filter) {
+      appState.termListFilter = filter;
+      render();
+    }
+
+    function renderDeckView() {
+      const deck = getActiveDeck();
+      if (!deck) return renderHomeView();
+
+      const total = deck.cards.length;
+      const masteredCount = deck.cards.filter(c => c.mastered).length;
+      const starredCount = deck.cards.filter(c => c.starred).length;
+      const pct = total > 0 ? Math.round((masteredCount / total) * 100) : 0;
+
+      const currentCardId = appState.fcCardOrder[appState.fcIndex];
+      const currentCard = deck.cards.find(c => c.id === currentCardId) || null;
+
+      // Filtered terms for bottom list
+      const visibleTerms = appState.termListFilter === 'starred'
+        ? deck.cards.filter(c => c.starred)
+        : deck.cards;
+
+      return `
+        <div class="space-y-8 animate-fade-up">
+          <!-- Top Breadcrumb & Deck Header -->
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <button onclick="navigateHome()" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline mb-2">
+                <i class="fa-solid fa-arrow-left"></i> Quay lại thư viện
+              </button>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                ${escapeHtml(deck.title)}
+              </h1>
+              ${deck.description ? `<p class="mt-1 text-sm sm:text-base text-slate-500 dark:text-slate-400">${escapeHtml(deck.description)}</p>` : ''}
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button onclick="openDeckEditor('${deck.id}')" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-pen text-xs"></i> Sửa bộ thẻ
+              </button>
+              <button onclick="resetDeckProgress()" title="Đặt lại trạng thái Đã thuộc" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-rotate-left text-xs"></i> Đặt lại
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 Study Modes Navigation Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="p-4 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20 flex items-center gap-3.5 border-2 border-indigo-600">
+              <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg shrink-0">
+                <i class="fa-solid fa-clone"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base truncate">Thẻ ghi nhớ</div>
+                <div class="text-xs text-indigo-100 truncate">Đang xem</div>
+              </div>
+            </div>
+
+            <button onclick="startLearnMode()" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:shadow-md transition-all flex items-center gap-3.5 text-left group active:scale-[0.98]">
+              <div class="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">Học (Learn)</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 truncate">Trắc nghiệm lặp lại</div>
+              </div>
+            </button>
+
+            <button onclick="startTestMode()" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:shadow-md transition-all flex items-center gap-3.5 text-left group active:scale-[0.98]">
+              <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-file-pen"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">Kiểm tra</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 truncate">Trắc nghiệm & Tự luận</div>
+              </div>
+            </button>
+
+            <button onclick="startMatchMode()" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:shadow-md transition-all flex items-center gap-3.5 text-left group active:scale-[0.98]">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-puzzle-piece"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">Ghép thẻ</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  ${deck.bestMatchTime !== null ? `Kỷ lục: ${deck.bestMatchTime.toFixed(1)}s` : 'Đua tốc độ'}
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <!-- FLASHCARD PLAYER SECTION -->
+          <div class="max-w-3xl mx-auto w-full space-y-4">
+            <!-- Mastery Progress Bar -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3 flex-1">
+                <span class="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  Đã thuộc: <span class="text-emerald-600 dark:text-emerald-400">${masteredCount}/${total}</span>
+                </span>
+                <div class="flex-1 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-500 dark:text-slate-400">${pct}%</span>
+              </div>
+              <div class="flex items-center gap-2 justify-end">
+                <button onclick="toggleStarredOnlyFlashcards()" class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors flex items-center gap-1.5 ${appState.fcOnlyStarred ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-400 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-amber-400'}">
+                  <i class="fa-solid fa-star"></i> Chỉ thẻ sao (${starredCount})
+                </button>
+                <button onclick="toggleShuffleFlashcards()" class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors flex items-center gap-1.5 ${appState.fcShuffled ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-400 text-indigo-700 dark:text-indigo-300' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400'}">
+                  <i class="fa-solid fa-shuffle"></i> Trộn thẻ
+                </button>
+              </div>
+            </div>
+
+            ${currentCard ? `
+              <!-- 3D Flip Card -->
+              <div id="flashcardContainer" onclick="flipFlashcard()" class="perspective-1000 cursor-pointer select-none w-full h-72 sm:h-96">
+                <div id="flashcardInner" class="relative w-full h-full transform-style-3d ${appState.fcFlipped ? 'rotate-y-180' : ''}">
+                  
+                  <!-- FRONT SIDE (TERM) -->
+                  <div class="absolute inset-0 backface-hidden bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/30 p-6 sm:p-8 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                      <span class="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider">
+                        Thuật ngữ
+                      </span>
+                      <div class="flex items-center gap-2">
+                        <button onclick="speakText('${escapeHtml(currentCard.term).replace(/'/g, "\\'")}', event)" title="Nghe phát âm tiếng Anh" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-900/50 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 flex items-center justify-center transition-colors">
+                          <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                        <button onclick="toggleCardStar('${currentCard.id}', event)" title="Đánh dấu sao cần ôn kỹ" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-amber-100 dark:bg-slate-800 dark:hover:bg-amber-900/40 flex items-center justify-center transition-colors ${currentCard.starred ? 'text-amber-500' : 'text-slate-400'}">
+                          <i class="${currentCard.starred ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="flex-1 flex items-center justify-center text-center px-2">
+                      <p class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-snug break-words">
+                        ${escapeHtml(currentCard.term)}
+                      </p>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+                      <span>${currentCard.mastered ? '<span class="text-emerald-600 dark:text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Đã thuộc</span>' : '<span>Chưa thuộc</span>'}</span>
+                      <span>Nhấp thẻ hoặc nhấn <kbd class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px]">Space</kbd> để lật</span>
+                    </div>
+                  </div>
+
+                  <!-- BACK SIDE (DEFINITION) -->
+                  <div class="absolute inset-0 backface-hidden rotate-y-180 bg-indigo-50/70 dark:bg-slate-800 rounded-3xl border-2 border-indigo-200 dark:border-indigo-500/40 shadow-xl shadow-indigo-500/10 p-6 sm:p-8 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                      <span class="px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider">
+                        Định nghĩa
+                      </span>
+                      <button onclick="toggleCardStar('${currentCard.id}', event)" title="Đánh dấu sao" class="w-10 h-10 rounded-xl bg-white/80 dark:bg-slate-700 flex items-center justify-center transition-colors ${currentCard.starred ? 'text-amber-500' : 'text-slate-400'}">
+                        <i class="${currentCard.starred ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                      </button>
+                    </div>
+
+                    <div class="flex-1 flex items-center justify-center text-center px-2">
+                      <p class="text-xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed break-words">
+                        ${escapeHtml(currentCard.definition)}
+                      </p>
+                    </div>
+
+                    <div class="text-center text-xs text-indigo-500 dark:text-indigo-300 font-medium">
+                      Nhấp để lật lại mặt trước
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Flashcard Controls Row -->
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <!-- Mastery Buttons -->
+                <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                  <button onclick="setCardMastered('${currentCard.id}', false)" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-bold border transition-all active:scale-95 flex items-center justify-center gap-2 ${!currentCard.mastered ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-amber-400'}">
+                    <i class="fa-solid fa-xmark"></i> Chưa thuộc
+                  </button>
+                  <button onclick="setCardMastered('${currentCard.id}', true)" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-bold border transition-all active:scale-95 flex items-center justify-center gap-2 ${currentCard.mastered ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'}">
+                    <i class="fa-solid fa-check"></i> Đã thuộc
+                  </button>
+                </div>
+
+                <!-- Prev / Counter / Next -->
+                <div class="flex items-center gap-3">
+                  <button onclick="prevFlashcard()" title="Thẻ trước (Mũi tên Trái)" class="w-11 h-11 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i>
+                  </button>
+                  <span class="text-sm font-bold text-slate-700 dark:text-slate-200 min-w-[4.5rem] text-center">
+                    ${appState.fcIndex + 1} / ${appState.fcCardOrder.length}
+                  </span>
+                  <button onclick="nextFlashcard()" title="Thẻ tiếp theo (Mũi tên Phải)" class="w-11 h-11 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all active:scale-95">
+                    <i class="fa-solid fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+            ` : `
+              <div class="p-10 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+                <p class="text-slate-500">Bộ thẻ này chưa có thuật ngữ nào. Hãy bấm "Sửa bộ thẻ" để thêm nhé!</p>
+              </div>
+            `}
+          </div>
+
+          <!-- FULL TERM LIST BELOW DECK -->
+          <div class="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">
+                Thuật ngữ trong học phần này (${total})
+              </h2>
+              <div class="inline-flex p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800 self-start">
+                <button onclick="setTermListFilter('all')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${appState.termListFilter === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}">
+                  Tất cả (${total})
+                </button>
+                <button onclick="setTermListFilter('starred')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${appState.termListFilter === 'starred' ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-600 dark:text-slate-400'}">
+                  <i class="fa-solid fa-star text-xs"></i> Đã gắn sao (${starredCount})
+                </button>
+              </div>
+            </div>
+
+            ${visibleTerms.length === 0 ? `
+              <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-sm">
+                Không có thuật ngữ nào được gắn sao. Nhấn vào biểu tượng ngôi sao để lưu lại các từ cần ôn kỹ!
+              </div>
+            ` : `
+              <div class="space-y-3">
+                ${visibleTerms.map(card => `
+                  <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                    <div class="sm:w-1/3 font-bold text-slate-900 dark:text-white text-base sm:border-r border-slate-200 dark:border-slate-800 sm:pr-4 flex items-center justify-between sm:justify-start gap-2">
+                      <span>${escapeHtml(card.term)}</span>
+                      ${card.mastered ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold shrink-0">Đã thuộc</span>' : ''}
+                    </div>
+                    <div class="flex-1 text-slate-600 dark:text-slate-300 text-sm sm:text-base">
+                      ${escapeHtml(card.definition)}
+                    </div>
+                    <div class="flex items-center gap-1.5 justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                      <button onclick="speakText('${escapeHtml(card.term).replace(/'/g, "\\'")}', event)" title="Nghe phát âm" class="w-9 h-9 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-volume-high text-sm"></i>
+                      </button>
+                      <button onclick="toggleCardStar('${card.id}', event)" title="Gắn sao" class="w-9 h-9 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 flex items-center justify-center transition-colors ${card.starred ? 'text-amber-500' : 'text-slate-400'}">
+                        <i class="${card.starred ? 'fa-solid' : 'fa-regular'} fa-star text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 7. MODE 2: LEARN (SMART REPEATING MULTIPLE CHOICE)
+     *************************************************************************/
+    function startLearnMode() {
+      const deck = getActiveDeck();
+      if (!deck || deck.cards.length < 2) {
+        showToast('Bộ thẻ cần có ít nhất 2 thuật ngữ để vào chế độ Học.', 'warning');
+        return;
+      }
+      appState.view = 'learn';
+      appState.learnQueue = shuffleArray(deck.cards.map(c => c.id));
+      appState.learnMasteredIds = [];
+      appState.learnTotalAttempts = 0;
+      appState.learnCorrectAttempts = 0;
+      loadNextLearnQuestion();
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function loadNextLearnQuestion() {
+      const deck = getActiveDeck();
+      if (!deck) return;
+
+      if (appState.learnQueue.length === 0) {
+        appState.learnCurrentCardId = null;
+        return;
+      }
+
+      const currentId = appState.learnQueue[0];
+      const currentCard = deck.cards.find(c => c.id === currentId);
+      appState.learnCurrentCardId = currentId;
+      appState.learnAnswered = false;
+      appState.learnSelectedId = null;
+
+      // Pick up to 3 wrong distractors
+      const others = shuffleArray(deck.cards.filter(c => c.id !== currentId)).slice(0, 3);
+      appState.learnOptions = shuffleArray([currentCard, ...others]);
+    }
+
+    function answerLearnOption(selectedCardId) {
+      if (appState.learnAnswered) return;
+      const deck = getActiveDeck();
+      if (!deck) return;
+
+      appState.learnAnswered = true;
+      appState.learnSelectedId = selectedCardId;
+      appState.learnTotalAttempts++;
+
+      const currentId = appState.learnCurrentCardId;
+      const isCorrect = selectedCardId === currentId;
+
+      if (isCorrect) {
+        appState.learnCorrectAttempts++;
+        // Remove from queue and mark mastered in session
+        appState.learnQueue.shift();
+        if (!appState.learnMasteredIds.includes(currentId)) {
+          appState.learnMasteredIds.push(currentId);
+        }
+        // Also update deck card mastered status
+        const card = deck.cards.find(c => c.id === currentId);
+        if (card) {
+          card.mastered = true;
+          saveDecks();
+        }
+      } else {
+        // Wrong answer: re-insert card later in the queue so user repeats it!
+        appState.learnQueue.shift();
+        const insertPos = Math.min(2, appState.learnQueue.length);
+        appState.learnQueue.splice(insertPos, 0, currentId);
+      }
+
+      render();
+    }
+
+    function continueLearnMode() {
+      loadNextLearnQuestion();
+      render();
+    }
+
+    function renderLearnView() {
+      const deck = getActiveDeck();
+      if (!deck) return renderHomeView();
+
+      const total = deck.cards.length;
+      const done = appState.learnMasteredIds.length;
+      const pct = Math.round((done / total) * 100);
+
+      // Completed State
+      if (!appState.learnCurrentCardId) {
+        const accuracy = appState.learnTotalAttempts > 0
+          ? Math.round((appState.learnCorrectAttempts / appState.learnTotalAttempts) * 100)
+          : 100;
+
+        return `
+          <div class="max-w-2xl mx-auto space-y-6 animate-fade-up">
+            <button onclick="openDeck('${deck.id}')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-arrow-left"></i> Quay lại bộ thẻ
+            </button>
+
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-5">
+              <div class="w-20 h-20 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-4xl">
+                <i class="fa-solid fa-trophy"></i>
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Tuyệt vời! Bạn đã thuộc hết bộ thẻ!
+              </h2>
+              <p class="text-slate-600 dark:text-slate-300">
+                Bạn đã hoàn thành tất cả <strong>${total}</strong> thuật ngữ trong bộ "${escapeHtml(deck.title)}".
+              </p>
+              <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto pt-2">
+                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800">
+                  <div class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">${accuracy}%</div>
+                  <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">Độ chính xác</div>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800">
+                  <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">${appState.learnTotalAttempts}</div>
+                  <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">Lượt trả lời</div>
+                </div>
+              </div>
+              <div class="pt-4 flex flex-wrap items-center justify-center gap-3">
+                <button onclick="startLearnMode()" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-all">
+                  <i class="fa-solid fa-rotate-right mr-1.5"></i> Học lại từ đầu
+                </button>
+                <button onclick="openDeck('${deck.id}')" class="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm transition-all">
+                  Về trang bộ thẻ
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      const currentCard = deck.cards.find(c => c.id === appState.learnCurrentCardId);
+      const isCorrect = appState.learnSelectedId === currentCard.id;
+
+      return `
+        <div class="max-w-3xl mx-auto space-y-6 animate-fade-up">
+          <!-- Top Bar -->
+          <div class="flex items-center justify-between gap-4">
+            <button onclick="openDeck('${deck.id}')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-arrow-left"></i> Thoát chế độ Học
+            </button>
+            <span class="text-sm font-bold text-slate-600 dark:text-slate-300">
+              Còn lại: <span class="text-indigo-600 dark:text-indigo-400">${appState.learnQueue.length}</span> câu
+            </span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span>Tiến độ ghi nhớ</span>
+              <span>${done} / ${total} (${pct}%)</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-600 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+            </div>
+          </div>
+
+          <!-- Question Card -->
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-lg space-y-6">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Thuật ngữ</span>
+              <button onclick="speakText('${escapeHtml(currentCard.term).replace(/'/g, "\\'")}', event)" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-900/40 text-slate-600 hover:text-indigo-600 dark:text-slate-300 flex items-center justify-center transition-colors" title="Nghe phát âm">
+                <i class="fa-solid fa-volume-high"></i>
+              </button>
+            </div>
+
+            <div class="py-4 text-center">
+              <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white break-words">
+                ${escapeHtml(currentCard.term)}
+              </h2>
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">
+                Chọn định nghĩa đúng (phím tắt 1–${appState.learnOptions.length}):
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${appState.learnOptions.map((opt, idx) => {
+                  let btnClass = 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-slate-800 dark:text-slate-100';
+                  let badgeClass = 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300';
+
+                  if (appState.learnAnswered) {
+                    if (opt.id === currentCard.id) {
+                      btnClass = 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/30';
+                      badgeClass = 'bg-emerald-500 text-white';
+                    } else if (opt.id === appState.learnSelectedId) {
+                      btnClass = 'bg-rose-50 dark:bg-rose-900/30 border-rose-500 text-rose-800 dark:text-rose-200';
+                      badgeClass = 'bg-rose-500 text-white';
+                    } else {
+                      btnClass = 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-50';
+                    }
+                  }
+
+                  return `
+                    <button
+                      onclick="answerLearnOption('${opt.id}')"
+                      ${appState.learnAnswered ? 'disabled' : ''}
+                      class="p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-3 ${btnClass}"
+                    >
+                      <span class="w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 ${badgeClass}">
+                        ${idx + 1}
+                      </span>
+                      <span class="text-sm sm:text-base font-medium leading-snug">
+                        ${escapeHtml(opt.definition)}
+                      </span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Feedback Banner -->
+            ${appState.learnAnswered ? `
+              <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl ${isCorrect ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800'} animate-fade-up">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">
+                    <i class="fa-solid ${isCorrect ? 'fa-check' : 'fa-xmark'}"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-sm sm:text-base ${isCorrect ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300'}">
+                      ${isCorrect ? 'Chính xác! Làm tốt lắm.' : 'Chưa chính xác! Thẻ này sẽ được lặp lại để bạn ôn kỹ.'}
+                    </div>
+                    ${!isCorrect ? `<div class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">Đáp án đúng: <strong>${escapeHtml(currentCard.definition)}</strong></div>` : ''}
+                  </div>
+                </div>
+                <button onclick="continueLearnMode()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shrink-0 transition-all">
+                  Tiếp tục <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 8. MODE 3: TEST (MULTIPLE CHOICE + WRITTEN)
+     *************************************************************************/
+    function startTestMode() {
+      const deck = getActiveDeck();
+      if (!deck || deck.cards.length < 2) {
+        showToast('Bộ thẻ cần có ít nhất 2 thuật ngữ để tạo bài kiểm tra.', 'warning');
+        return;
+      }
+
+      appState.view = 'test';
+      appState.testSubmitted = false;
+      appState.testScore = 0;
+
+      const shuffledCards = shuffleArray(deck.cards);
+      const half = Math.ceil(shuffledCards.length / 2);
+
+      appState.testQuestions = shuffledCards.map((card, index) => {
+        // First half: Multiple choice (Term -> choose Definition)
+        // Second half: Written (Definition -> type English Term)
+        if (index < half) {
+          const distractors = shuffleArray(deck.cards.filter(c => c.id !== card.id)).slice(0, 3);
+          return {
+            id: generateId(),
+            type: 'mc',
+            card,
+            options: shuffleArray([card, ...distractors]),
+            userAnswer: '',
+            isCorrect: false
+          };
+        } else {
+          return {
+            id: generateId(),
+            type: 'written',
+            card,
+            userAnswer: '',
+            isCorrect: false
+          };
+        }
+      });
+
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateTestAnswer(qIndex, value) {
+      if (appState.testSubmitted) return;
+      appState.testQuestions[qIndex].userAnswer = value;
+      // For MC buttons, re-render to show selection highlight
+      if (appState.testQuestions[qIndex].type === 'mc') {
+        render();
+      }
+    }
+
+    function normalizeAnswer(str) {
+      return (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function submitTest() {
+      if (appState.testSubmitted) return;
+
+      let score = 0;
+      appState.testQuestions.forEach(q => {
+        if (q.type === 'mc') {
+          q.isCorrect = q.userAnswer === q.card.id;
+        } else {
+          q.isCorrect = normalizeAnswer(q.userAnswer) === normalizeAnswer(q.card.term);
+        }
+        if (q.isCorrect) score++;
+      });
+
+      appState.testScore = score;
+      appState.testSubmitted = true;
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderTestView() {
+      const deck = getActiveDeck();
+      if (!deck) return renderHomeView();
+
+      const total = appState.testQuestions.length;
+      const pct = total > 0 ? Math.round((appState.testScore / total) * 100) : 0;
+
+      return `
+        <div class="max-w-3xl mx-auto space-y-6 animate-fade-up">
+          <div class="flex items-center justify-between gap-4">
+            <button onclick="openDeck('${deck.id}')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-arrow-left"></i> Quay lại bộ thẻ
+            </button>
+            <button onclick="startTestMode()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors">
+              <i class="fa-solid fa-shuffle mr-1"></i> Tạo đề mới
+            </button>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+              Kiểm tra: ${escapeHtml(deck.title)}
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Tổng cộng ${total} câu hỏi kết hợp giữa Trắc nghiệm và Tự luận.
+            </p>
+
+            ${appState.testSubmitted ? `
+              <div class="mt-5 p-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div class="text-xs uppercase tracking-wider font-bold text-indigo-200">Kết quả bài kiểm tra</div>
+                  <div class="text-3xl font-extrabold mt-1">${appState.testScore} / ${total} câu đúng (${pct}%)</div>
+                  <p class="text-sm text-indigo-100 mt-1">
+                    ${pct >= 80 ? 'Xuất sắc! Bạn nắm rất chắc kiến thức bộ thẻ này.' : pct >= 50 ? 'Khá tốt! Hãy xem lại các câu sai bên dưới nhé.' : 'Cần ôn tập thêm một chút nữa, cố lên!'}
+                  </p>
+                </div>
+                <button onclick="startTestMode()" class="px-5 py-2.5 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-sm shrink-0 shadow">
+                  Làm bài kiểm tra mới
+                </button>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Questions List -->
+          <div class="space-y-5">
+            ${appState.testQuestions.map((q, idx) => {
+              const borderClass = appState.testSubmitted
+                ? (q.isCorrect ? 'border-emerald-400 dark:border-emerald-600' : 'border-rose-400 dark:border-rose-600')
+                : 'border-slate-200 dark:border-slate-800';
+
+              if (q.type === 'mc') {
+                return `
+                  <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border-2 ${borderClass} shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
+                        Câu ${idx + 1} • Trắc nghiệm
+                      </span>
+                      ${appState.testSubmitted ? `
+                        <span class="text-xs font-bold ${q.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+                          <i class="fa-solid ${q.isCorrect ? 'fa-circle-check' : 'fa-circle-xmark'} mr-1"></i>${q.isCorrect ? 'Đúng' : 'Sai'}
+                        </span>
+                      ` : ''}
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2">
+                      <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">${escapeHtml(q.card.term)}</h3>
+                      <button onclick="speakText('${escapeHtml(q.card.term).replace(/'/g, "\\'")}', event)" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-volume-high text-sm"></i>
+                      </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      ${q.options.map(opt => {
+                        const isSelected = q.userAnswer === opt.id;
+                        let cls = 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-indigo-400 text-slate-700 dark:text-slate-200';
+                        if (!appState.testSubmitted && isSelected) {
+                          cls = 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-600 text-indigo-800 dark:text-indigo-200 font-semibold';
+                        } else if (appState.testSubmitted) {
+                          if (opt.id === q.card.id) {
+                            cls = 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-800 dark:text-emerald-200 font-semibold';
+                          } else if (isSelected && !q.isCorrect) {
+                            cls = 'bg-rose-50 dark:bg-rose-900/30 border-rose-500 text-rose-800 dark:text-rose-200 line-through';
+                          } else {
+                            cls = 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60';
+                          }
+                        }
+
+                        return `
+                          <button
+                            onclick="updateTestAnswer(${idx}, '${opt.id}')"
+                            ${appState.testSubmitted ? 'disabled' : ''}
+                            class="p-3.5 rounded-xl border-2 text-left text-sm transition-all ${cls}"
+                          >
+                            ${escapeHtml(opt.definition)}
+                          </button>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `;
+              } else {
+                // Written Question
+                return `
+                  <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border-2 ${borderClass} shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
+                        Câu ${idx + 1} • Tự luận
+                      </span>
+                      ${appState.testSubmitted ? `
+                        <span class="text-xs font-bold ${q.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+                          <i class="fa-solid ${q.isCorrect ? 'fa-circle-check' : 'fa-circle-xmark'} mr-1"></i>${q.isCorrect ? 'Đúng' : 'Sai'}
+                        </span>
+                      ` : ''}
+                    </div>
+
+                    <div>
+                      <div class="text-xs text-slate-400 font-semibold mb-1">Định nghĩa:</div>
+                      <p class="text-lg font-bold text-slate-900 dark:text-white">${escapeHtml(q.card.definition)}</p>
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Nhập thuật ngữ tương ứng:</label>
+                      <input
+                        type="text"
+                        value="${escapeHtml(q.userAnswer)}"
+                        oninput="updateTestAnswer(${idx}, this.value)"
+                        ${appState.testSubmitted ? 'disabled' : ''}
+                        placeholder="Gõ đáp án của bạn..."
+                        class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none text-sm sm:text-base font-medium text-slate-900 dark:text-white"
+                      />
+                    </div>
+
+                    ${appState.testSubmitted && !q.isCorrect ? `
+                      <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-800 dark:text-emerald-300">
+                        Đáp án đúng: <strong>${escapeHtml(q.card.term)}</strong>
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }
+            }).join('')}
+          </div>
+
+          ${!appState.testSubmitted ? `
+            <div class="pt-2 flex justify-center">
+              <button onclick="submitTest()" class="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base shadow-lg shadow-indigo-500/30 transition-all active:scale-95">
+                <i class="fa-solid fa-paper-plane mr-2"></i>Nộp bài kiểm tra
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 9. MODE 4: MATCH GAME (TIMED PAIRING + BEST RECORD)
+     *************************************************************************/
+    function startMatchMode() {
+      const deck = getActiveDeck();
+      if (!deck || deck.cards.length < 2) {
+        showToast('Bộ thẻ cần ít nhất 2 thuật ngữ để chơi Ghép thẻ.', 'warning');
+        return;
+      }
+
+      stopMatchTimer();
+      appState.view = 'match';
+      appState.matchSelectedTileIndex = null;
+      appState.matchMatchedPairs = 0;
+      appState.matchFinished = false;
+      appState.matchIsNewRecord = false;
+      appState.matchLock = false;
+
+      // Pick up to 6 pairs (12 tiles) for optimal grid gameplay
+      const chosenCards = shuffleArray(deck.cards).slice(0, 6);
+      appState.matchTotalPairs = chosenCards.length;
+
+      const tiles = [];
+      chosenCards.forEach(c => {
+        tiles.push({ pairId: c.id, type: 'term', text: c.term, matched: false, wrong: false });
+        tiles.push({ pairId: c.id, type: 'def', text: c.definition, matched: false, wrong: false });
+      });
+
+      appState.matchTiles = shuffleArray(tiles);
+      appState.matchStartTime = performance.now();
+      appState.matchElapsed = 0;
+
+      appState.matchTimerId = setInterval(() => {
+        appState.matchElapsed = (performance.now() - appState.matchStartTime) / 1000;
+        const timerEl = document.getElementById('matchTimerDisplay');
+        if (timerEl) timerEl.textContent = appState.matchElapsed.toFixed(1) + 's';
+      }, 100);
+
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function handleMatchTileClick(index) {
+      if (appState.matchLock || appState.matchFinished) return;
+      const tile = appState.matchTiles[index];
+      if (!tile || tile.matched) return;
+
+      // Clicking the same tile deselects it
+      if (appState.matchSelectedTileIndex === index) {
+        appState.matchSelectedTileIndex = null;
+        renderMatchGridOnly();
+        return;
+      }
+
+      // First tile selected
+      if (appState.matchSelectedTileIndex === null) {
+        appState.matchSelectedTileIndex = index;
+        renderMatchGridOnly();
+        return;
+      }
+
+      // Second tile selected -> check match!
+      const firstIndex = appState.matchSelectedTileIndex;
+      const firstTile = appState.matchTiles[firstIndex];
+      const isMatch = firstTile.pairId === tile.pairId && firstTile.type !== tile.type;
+
+      if (isMatch) {
+        firstTile.matched = true;
+        tile.matched = true;
+        appState.matchSelectedTileIndex = null;
+        appState.matchMatchedPairs++;
+        renderMatchGridOnly();
+
+        // Check win condition
+        if (appState.matchMatchedPairs >= appState.matchTotalPairs) {
+          stopMatchTimer();
+          appState.matchElapsed = (performance.now() - appState.matchStartTime) / 1000;
+          appState.matchFinished = true;
+
+          const deck = getActiveDeck();
+          if (deck) {
+            if (deck.bestMatchTime === null || appState.matchElapsed < deck.bestMatchTime) {
+              deck.bestMatchTime = Number(appState.matchElapsed.toFixed(1));
+              appState.matchIsNewRecord = true;
+              saveDecks();
+            }
+          }
+          setTimeout(() => render(), 380);
+        }
+      } else {
+        // Wrong pair -> shake effect & brief lock
+        appState.matchLock = true;
+        firstTile.wrong = true;
+        tile.wrong = true;
+        renderMatchGridOnly();
+
+        setTimeout(() => {
+          firstTile.wrong = false;
+          tile.wrong = false;
+          appState.matchSelectedTileIndex = null;
+          appState.matchLock = false;
+          renderMatchGridOnly();
+        }, 450);
+      }
+    }
+
+    function renderMatchGridOnly() {
+      const container = document.getElementById('matchGridContainer');
+      if (container) container.innerHTML = getMatchGridHTML();
+    }
+
+    function getMatchGridHTML() {
+      return `
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          ${appState.matchTiles.map((tile, idx) => {
+            const isSelected = appState.matchSelectedTileIndex === idx;
+            let cls = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-indigo-400 text-slate-800 dark:text-slate-100';
+
+            if (tile.matched) {
+              cls = 'bg-emerald-500 border-emerald-500 text-white animate-match-out';
+            } else if (tile.wrong) {
+              cls = 'bg-rose-50 dark:bg-rose-900/40 border-rose-500 text-rose-700 dark:text-rose-300 animate-shake';
+            } else if (isSelected) {
+              cls = 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]';
+            }
+
+            return `
+              <button
+                onclick="handleMatchTileClick(${idx})"
+                class="min-h-[105px] sm:min-h-[130px] p-4 rounded-2xl border-2 font-semibold text-sm sm:text-base flex items-center justify-center text-center transition-all duration-150 select-none ${cls}"
+              >
+                <span class="line-clamp-4 break-words">${escapeHtml(tile.text)}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderMatchView() {
+      const deck = getActiveDeck();
+      if (!deck) return renderHomeView();
+
+      if (appState.matchFinished) {
+        return `
+          <div class="max-w-xl mx-auto space-y-6 animate-fade-up">
+            <button onclick="openDeck('${deck.id}')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-arrow-left"></i> Quay lại bộ thẻ
+            </button>
+
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-5">
+              <div class="w-20 h-20 mx-auto rounded-3xl ${appState.matchIsNewRecord ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-500' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'} flex items-center justify-center text-4xl">
+                <i class="fa-solid ${appState.matchIsNewRecord ? 'fa-crown' : 'fa-stopwatch'}"></i>
+              </div>
+
+              ${appState.matchIsNewRecord ? `
+                <span class="inline-block px-3.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-extrabold uppercase tracking-wider">
+                  🎉 Kỷ lục mới!
+                </span>
+              ` : ''}
+
+              <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+                ${appState.matchElapsed.toFixed(1)} giây
+              </h2>
+              <p class="text-slate-600 dark:text-slate-300 text-sm sm:text-base">
+                Bạn đã ghép đúng tất cả ${appState.matchTotalPairs} cặp thẻ!
+                ${deck.bestMatchTime !== null ? `<br/>Kỷ lục nhanh nhất của bộ này: <strong class="text-indigo-600 dark:text-indigo-400">${deck.bestMatchTime.toFixed(1)}s</strong>` : ''}
+              </p>
+
+              <div class="pt-3 flex flex-wrap items-center justify-center gap-3">
+                <button onclick="startMatchMode()" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-all">
+                  <i class="fa-solid fa-play mr-1.5"></i> Chơi lại phá kỷ lục
+                </button>
+                <button onclick="openDeck('${deck.id}')" class="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm transition-all">
+                  Về trang bộ thẻ
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="space-y-6 animate-fade-up">
+          <div class="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <button onclick="openDeck('${deck.id}')" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-arrow-left"></i> Thoát
+            </button>
+
+            <div class="flex items-center gap-5">
+              ${deck.bestMatchTime !== null ? `
+                <div class="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  <i class="fa-solid fa-trophy text-amber-500 mr-1"></i>Kỷ lục: <strong>${deck.bestMatchTime.toFixed(1)}s</strong>
+                </div>
+              ` : ''}
+              <div class="px-4 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-extrabold text-lg tabular-nums flex items-center gap-2">
+                <i class="fa-solid fa-stopwatch text-base"></i>
+                <span id="matchTimerDisplay">${appState.matchElapsed.toFixed(1)}s</span>
+              </div>
+            </div>
+
+            <button onclick="startMatchMode()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors">
+              <i class="fa-solid fa-rotate-right mr-1"></i> Chơi lại
+            </button>
+          </div>
+
+          <p class="text-center text-sm text-slate-500 dark:text-slate-400">
+            Chọn một <strong>Thuật ngữ</strong> và <strong>Định nghĩa</strong> tương ứng để làm chúng biến mất nhanh nhất!
+          </p>
+
+          <div id="matchGridContainer">
+            ${getMatchGridHTML()}
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 10. DECK CREATOR / EDITOR + QUICK IMPORT
+     *************************************************************************/
+    function toggleImportBox() {
+      appState.showImportBox = !appState.showImportBox;
+      render();
+    }
+
+    function updateEditorField(field, value) {
+      appState[field] = value;
+    }
+
+    function updateEditorCard(index, field, value) {
+      if (appState.editorCards[index]) {
+        appState.editorCards[index][field] = value;
+      }
+    }
+
+    function addEditorCard() {
+      appState.editorCards.push({
+        id: generateId(),
+        term: '',
+        definition: '',
+        starred: false,
+        mastered: false
+      });
+      render();
+    }
+
+    function removeEditorCard(index) {
+      if (appState.editorCards.length <= 1) {
+        showToast('Bộ thẻ cần ít nhất 1 dòng.', 'warning');
+        return;
+      }
+      appState.editorCards.splice(index, 1);
+      render();
+    }
+
+    function processQuickImport() {
+      const textarea = document.getElementById('quickImportText');
+      const sepSelect = document.getElementById('quickImportSep');
+      if (!textarea || !sepSelect) return;
+
+      const raw = textarea.value.trim();
+      if (!raw) {
+        showToast('Vui lòng dán nội dung cần nhập.', 'warning');
+        return;
+      }
+
+      const sepType = sepSelect.value;
+      const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+      const imported = [];
+
+      lines.forEach(line => {
+        let parts = [];
+        if (sepType === 'tab') {
+          parts = line.split('\t');
+        } else if (sepType === 'comma') {
+          const idx = line.indexOf(',');
+          if (idx !== -1) parts = [line.slice(0, idx), line.slice(idx + 1)];
+        } else if (sepType === 'dash') {
+          const idx = line.indexOf('-');
+          if (idx !== -1) parts = [line.slice(0, idx), line.slice(idx + 1)];
+        }
+
+        if (parts.length >= 2) {
+          const term = parts[0].trim();
+          const def = parts.slice(1).join(' ').trim();
+          if (term && def) {
+            imported.push({
+              id: generateId(),
+              term,
+              definition: def,
+              starred: false,
+              mastered: false
+            });
+          }
+        }
+      });
+
+      if (imported.length === 0) {
+        showToast('Không tách được thẻ nào. Hãy kiểm tra lại ký tự phân tách!', 'error');
+        return;
+      }
+
+      // Remove completely empty placeholder rows before appending
+      appState.editorCards = appState.editorCards.filter(c => c.term.trim() || c.definition.trim());
+      appState.editorCards.push(...imported);
+      appState.showImportBox = false;
+      showToast(`Đã nhập thành công ${imported.length} thẻ!`, 'success');
+      render();
+    }
+
+    function saveEditorDeck() {
+      const title = appState.editorTitle.trim();
+      if (!title) {
+        showToast('Vui lòng nhập tiêu đề cho bộ học phần.', 'warning');
+        return;
+      }
+
+      const validCards = appState.editorCards
+        .map(c => ({
+          ...c,
+          term: c.term.trim(),
+          definition: c.definition.trim()
+        }))
+        .filter(c => c.term && c.definition);
+
+      if (validCards.length < 1) {
+        showToast('Vui lòng nhập ít nhất 1 thẻ có đầy đủ Thuật ngữ và Định nghĩa.', 'warning');
+        return;
+      }
+
+      if (appState.editingDeckId) {
+        const deck = appState.decks.find(d => d.id === appState.editingDeckId);
+        if (deck) {
+          deck.title = title;
+          deck.description = appState.editorDesc.trim();
+          deck.cards = validCards;
+          saveDecks();
+          showToast('Đã cập nhật bộ học phần!', 'success');
+          openDeck(deck.id);
+          return;
+        }
+      }
+
+      const newDeck = {
+        id: generateId(),
+        title,
+        description: appState.editorDesc.trim(),
+        createdAt: Date.now(),
+        bestMatchTime: null,
+        cards: validCards
+      };
+      appState.decks.unshift(newDeck);
+      saveDecks();
+      showToast('Đã tạo bộ học phần mới!', 'success');
+      openDeck(newDeck.id);
+    }
+
+    function renderEditorView() {
+      const isEdit = Boolean(appState.editingDeckId);
+
+      return `
+        <div class="max-w-4xl mx-auto space-y-6 animate-fade-up">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <button onclick="${isEdit ? `openDeck('${appState.editingDeckId}')` : 'navigateHome()'}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline mb-1">
+                <i class="fa-solid fa-arrow-left"></i> Hủy và quay lại
+              </button>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                ${isEdit ? 'Chỉnh sửa bộ học phần' : 'Tạo bộ học phần mới'}
+              </h1>
+            </div>
+            <button onclick="saveEditorDeck()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-500/20 transition-all active:scale-95">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i> ${isEdit ? 'Lưu thay đổi' : 'Tạo bộ thẻ'}
+            </button>
+          </div>
+
+          <!-- Deck Metadata -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Tiêu đề bộ thẻ *</label>
+              <input
+                type="text"
+                value="${escapeHtml(appState.editorTitle)}"
+                oninput="updateEditorField('editorTitle', this.value)"
+                placeholder="Ví dụ: Từ vựng IELTS chủ đề Công nghệ"
+                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none text-base font-semibold text-slate-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Mô tả (không bắt buộc)</label>
+              <input
+                type="text"
+                value="${escapeHtml(appState.editorDesc)}"
+                oninput="updateEditorField('editorDesc', this.value)"
+                placeholder="Thêm mô tả ngắn về nội dung bộ thẻ..."
+                class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none text-sm text-slate-800 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          <!-- Quick Import Toggle & Panel -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <button onclick="toggleImportBox()" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <i class="fa-solid fa-file-import"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white">Nhập nhanh từ văn bản / Excel</div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400">Dán danh sách Thuật ngữ - Định nghĩa để tạo hàng loạt thẻ cùng lúc</div>
+                </div>
+              </div>
+              <i class="fa-solid fa-chevron-${appState.showImportBox ? 'up' : 'down'} text-slate-400"></i>
+            </button>
+
+            ${appState.showImportBox ? `
+              <div class="p-5 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4 animate-fade-up">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <label class="text-xs font-bold text-slate-600 dark:text-slate-300">Ký tự phân tách Thuật ngữ & Định nghĩa:</label>
+                  <select id="quickImportSep" class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-none">
+                    <option value="dash">Dấu gạch ngang ( - )</option>
+                    <option value="tab">Dấu Tab (copy từ Excel/Google Sheets)</option>
+                    <option value="comma">Dấu phẩy ( , )</option>
+                  </select>
+                </div>
+
+                <textarea
+                  id="quickImportText"
+                  rows="5"
+                  placeholder="Ví dụ (mỗi thẻ 1 dòng):&#10;Apple - Quả táo&#10;Innovative - Mang tính đổi mới&#10;Efficient - Hiệu quả"
+                  class="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-mono text-slate-800 dark:text-slate-200"
+                ></textarea>
+
+                <div class="flex justify-end gap-2">
+                  <button onclick="toggleImportBox()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    Đóng
+                  </button>
+                  <button onclick="processQuickImport()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm">
+                    <i class="fa-solid fa-bolt mr-1.5"></i> Nhập vào danh sách
+                  </button>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Cards List Editor -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-extrabold text-slate-900 dark:text-white">
+                Danh sách thẻ (${appState.editorCards.length})
+              </h2>
+            </div>
+
+            ${appState.editorCards.map((card, idx) => `
+              <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span class="text-xs font-extrabold text-slate-400">#${idx + 1}</span>
+                  <button onclick="removeEditorCard(${idx})" title="Xóa thẻ này" class="w-8 h-8 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-400 hover:text-rose-500 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Thuật ngữ</label>
+                    <input
+                      type="text"
+                      value="${escapeHtml(card.term)}"
+                      oninput="updateEditorCard(${idx}, 'term', this.value)"
+                      placeholder="Nhập thuật ngữ (vd: Collaborate)"
+                      class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-semibold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Định nghĩa</label>
+                    <input
+                      type="text"
+                      value="${escapeHtml(card.definition)}"
+                      oninput="updateEditorCard(${idx}, 'definition', this.value)"
+                      placeholder="Nhập định nghĩa tiếng Việt"
+                      class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+
+            <button onclick="addEditorCard()" class="w-full py-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus-circle text-base"></i> Thêm thẻ mới
+            </button>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button onclick="saveEditorDeck()" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base shadow-lg shadow-indigo-500/25 transition-all active:scale-95">
+              <i class="fa-solid fa-check mr-2"></i> ${isEdit ? 'Lưu bộ học phần' : 'Hoàn tất & Tạo bộ thẻ'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 11. MAIN RENDER & KEYBOARD / TOUCH INTERACTIONS
+     *************************************************************************/
+    function render() {
+      const root = document.getElementById('appRoot');
+      if (!root) return;
+
+      switch (appState.view) {
+        case 'home':
+          root.innerHTML = renderHomeView();
+          break;
+        case 'deck':
+          root.innerHTML = renderDeckView();
+          attachFlashcardTouchSwipe();
+          break;
+        case 'learn':
+          root.innerHTML = renderLearnView();
+          break;
+        case 'test':
+          root.innerHTML = renderTestView();
+          break;
+        case 'match':
+          root.innerHTML = renderMatchView();
+          break;
+        case 'editor':
+          root.innerHTML = renderEditorView();
+          break;
+        default:
+          root.innerHTML = renderHomeView();
+      }
+    }
+
+    /**
+     * Mobile Swipe Gesture Support for Flashcards
+     */
+    function attachFlashcardTouchSwipe() {
+      const el = document.getElementById('flashcardContainer');
+      if (!el) return;
+
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      el.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+
+      el.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        const dy = e.changedTouches[0].screenY - touchStartY;
+        // Horizontal swipe threshold
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) {
+          if (dx < 0) nextFlashcard();
+          else prevFlashcard();
+        }
+      }, { passive: true });
+    }
+
+    /**
+     * Global Keyboard Shortcuts (Space, ArrowLeft, ArrowRight, 1-4 in Learn Mode)
+     */
+    document.addEventListener('keydown', (e) => {
+      // Ignore shortcuts when typing in inputs or textareas
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (appState.view === 'deck') {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          flipFlashcard();
+        } else if (e.code === 'ArrowRight') {
+          e.preventDefault();
+          nextFlashcard();
+        } else if (e.code === 'ArrowLeft') {
+          e.preventDefault();
+          prevFlashcard();
+        }
+      } else if (appState.view === 'learn' && appState.learnCurrentCardId) {
+        if (!appState.learnAnswered && ['1', '2', '3', '4'].includes(e.key)) {
+          const idx = parseInt(e.key, 10) - 1;
+          if (appState.learnOptions[idx]) {
+            answerLearnOption(appState.learnOptions[idx].id);
+          }
+        } else if (appState.learnAnswered && (e.code === 'Enter' || e.code === 'Space')) {
+          e.preventDefault();
+          continueLearnMode();
+        }
+      }
+    });
+
+    /*************************************************************************
+     * 12. BOOTSTRAP APPLICATION
+     *************************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      loadDecks();
+      render();
+    });
+  </script>
+</body>
+</html>
