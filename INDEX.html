@@ -136,6 +136,12 @@
 
       <!-- Right Actions -->
       <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Cloud Sync Status Badge -->
+        <button id="syncStatusBtn" onclick="openSyncModal()" title="Cài đặt Đồng bộ & Dữ liệu" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors">
+          <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+          <span id="syncLabel" class="hidden sm:inline">Chế độ Cục bộ</span>
+        </button>
+
         <button onclick="openDeckEditor()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm shadow-indigo-500/20 transition-all active:scale-95">
           <i class="fa-solid fa-plus"></i>
           <span class="hidden sm:inline">Tạo bộ thẻ</span>
@@ -157,7 +163,7 @@
   <footer class="border-t border-slate-200 dark:border-slate-800 py-5 mt-12 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
     <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
       <p><strong class="text-indigo-600 dark:text-indigo-400">FlashMaster</strong> — Ứng dụng học từ vựng & ghi nhớ thông minh.</p>
-      <p>Dữ liệu được lưu tự động trên trình duyệt của bạn.</p>
+      <p id="footerSyncNote">Hỗ trợ đồng bộ đám mây Firebase & lưu trữ cục bộ.</p>
     </div>
   </footer>
 
@@ -184,16 +190,117 @@
     </div>
   </div>
 
+  <!-- ==================== SYNC & DATA SETTINGS MODAL ==================== -->
+  <div id="syncModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-fade-up space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <i class="fa-solid fa-cloud"></i>
+          </div>
+          <h3 class="text-lg font-extrabold text-slate-900 dark:text-white">Cài đặt Đồng bộ & Dữ liệu</h3>
+        </div>
+        <button onclick="closeSyncModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Connection Status Banner -->
+      <div id="syncModalStatusBox" class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-sm space-y-1">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Sync Room ID -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Mã phòng đồng bộ (Sync ID)
+        </label>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          Nhập cùng một mã trên Laptop và Điện thoại để dùng chung kho bộ thẻ theo thời gian thực.
+        </p>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            id="syncIdInput"
+            placeholder="Ví dụ: default_workspace"
+            class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-semibold text-slate-900 dark:text-white"
+          />
+          <button onclick="saveSyncId()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shrink-0 transition-colors">
+            Áp dụng
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON Backup / Restore -->
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Sao lưu & Khôi phục thủ công (JSON)
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="exportDecksJSON()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+            <i class="fa-solid fa-download"></i> Xuất JSON
+          </button>
+          <button onclick="triggerImportJSON()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+            <i class="fa-solid fa-upload"></i> Nhập JSON
+          </button>
+          <input type="file" id="importJsonInput" accept=".json" onchange="handleImportJSONFile(event)" class="hidden" />
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none max-w-xs sm:max-w-sm w-full"></div>
 
-  <!-- ==================== APPLICATION SCRIPT ==================== -->
-  <script>
+  <!-- ==================== APPLICATION SCRIPT (FIREBASE MODULE) ==================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /*************************************************************************
+     * 0. CẤU HÌNH FIREBASE CỦA BẠN (DÁN MÃ VÀO ĐÂY KHI ĐƯA LÊN GITHUB PAGES)
+     * - Nếu chạy bản Preview sẵn có hoặc đã dán mã bên dưới, web sẽ tự động
+     *   đồng bộ thời gian thực giữa Laptop và Điện thoại.
+     * - Nếu giữ nguyên "PASTE_API_KEY_HERE", web chạy chế độ Cục bộ (Offline).
+     *************************************************************************/
+    const USER_FIREBASE_CONFIG = {
+	apiKey: "AIzaSyAPMdzS-4vW8qA_FP5syd_sfB3lNtllTkk",
+  	authDomain: "jason-english-master.firebaseapp.com",
+  	projectId: "jason-english-master",
+  	storageBucket: "jason-english-master.firebasestorage.app",
+  	messagingSenderId: "313402842909",
+ 	appId: "1:313402842909:web:585861b17f9e76efc3cbf4",
+      appId: "PASTE_APP_ID_HERE"
+    };
+
     /*************************************************************************
      * 1. INITIAL SAMPLE DATA & STATE MANAGEMENT
      *************************************************************************/
     const STORAGE_KEY = 'flashmaster_decks_v1';
     const THEME_KEY = 'flashmaster_theme_v1';
+    const SYNC_ID_KEY = 'flashmaster_sync_id_v1';
+
+    // Cloud Sync Runtime State
+    const cloudState = {
+      enabled: false,
+      status: 'local', // 'connecting' | 'cloud' | 'local' | 'error'
+      statusMessage: 'Đang chạy ở chế độ Cục bộ (chưa cấu hình Firebase).',
+      db: null,
+      auth: null,
+      user: null,
+      appId: 'default-app-id',
+      unsubscribe: null,
+      seededWorkspaces: new Set()
+    };
+
+    function getSavedSyncId() {
+      try {
+        return localStorage.getItem(SYNC_ID_KEY) || 'default_workspace';
+      } catch (e) {
+        return 'default_workspace';
+      }
+    }
 
     /**
      * Generates a unique ID string
@@ -249,6 +356,7 @@
     // Global App State
     const appState = {
       decks: [],
+      syncId: getSavedSyncId(),
       view: 'home', // 'home' | 'deck' | 'learn' | 'test' | 'match' | 'editor'
       activeDeckId: null,
       searchQuery: '',
@@ -297,9 +405,9 @@
     };
 
     /*************************************************************************
-     * 2. PERSISTENCE (LOCALSTORAGE) & THEME HANDLING
+     * 2. PERSISTENCE (FIREBASE FIRESTORE + LOCALSTORAGE FALLBACK) & THEME
      *************************************************************************/
-    function loadDecks() {
+    function loadDecksLocal() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -313,16 +421,351 @@
         console.error('Lỗi đọc localStorage:', err);
       }
       appState.decks = getSampleDecks();
-      saveDecks();
+      saveDecksLocal();
     }
 
-    function saveDecks() {
+    function saveDecksLocal() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.decks));
       } catch (err) {
         console.error('Lỗi lưu localStorage:', err);
-        showToast('Không thể lưu dữ liệu vào trình duyệt.', 'error');
       }
+    }
+
+    /**
+     * Save decks both locally and to Firebase Firestore (if connected)
+     * @param {Object|null} targetDeck - Specific deck to sync, or null to sync all
+     */
+    function saveDecks(targetDeck = null) {
+      saveDecksLocal();
+      if (!cloudState.enabled || !cloudState.db || !cloudState.user) return;
+
+      const listToSync = targetDeck ? [targetDeck] : appState.decks;
+      listToSync.forEach(deck => {
+        syncSingleDeckToCloud(deck);
+      });
+    }
+
+    async function syncSingleDeckToCloud(deck) {
+      if (!cloudState.enabled || !cloudState.db || !cloudState.user) return;
+      try {
+        const deckDocRef = doc(cloudState.db, 'artifacts', cloudState.appId, 'public', 'data', 'flashmaster_decks', deck.id);
+        await setDoc(deckDocRef, {
+          ...deck,
+          syncId: appState.syncId,
+          updatedAt: Date.now()
+        });
+      } catch (err) {
+        console.error('Lỗi đồng bộ bộ thẻ lên Cloud:', err);
+        showToast('Không thể đồng bộ lên Cloud. Dữ liệu đã lưu cục bộ.', 'warning');
+      }
+    }
+
+    async function deleteDeckFromCloud(deckId) {
+      if (!cloudState.enabled || !cloudState.db || !cloudState.user) return;
+      try {
+        const deckDocRef = doc(cloudState.db, 'artifacts', cloudState.appId, 'public', 'data', 'flashmaster_decks', deckId);
+        await deleteDoc(deckDocRef);
+      } catch (err) {
+        console.error('Lỗi xóa bộ thẻ trên Cloud:', err);
+      }
+    }
+
+    function updateSyncUI() {
+      const dot = document.getElementById('syncDot');
+      const label = document.getElementById('syncLabel');
+      const footerNote = document.getElementById('footerSyncNote');
+      const modalBox = document.getElementById('syncModalStatusBox');
+
+      if (cloudState.status === 'cloud') {
+        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50';
+        if (label) label.textContent = 'Đã đồng bộ Cloud';
+        if (footerNote) footerNote.textContent = `Đang đồng bộ thời gian thực (Phòng: ${appState.syncId}).`;
+      } else if (cloudState.status === 'connecting') {
+        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+        if (label) label.textContent = 'Đang kết nối...';
+      } else {
+        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+        if (label) label.textContent = 'Chế độ Cục bộ';
+        if (footerNote) footerNote.textContent = 'Dữ liệu đang được lưu cục bộ trên trình duyệt này.';
+      }
+
+      if (modalBox) {
+        const badge = cloudState.status === 'cloud'
+          ? '<span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Đã đồng bộ Cloud (Firebase)</span>'
+          : cloudState.status === 'connecting'
+          ? '<span class="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span> Đang kết nối Firebase...</span>'
+          : '<span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> Chế độ Cục bộ (Offline)</span>';
+
+        modalBox.innerHTML = `
+          <div>${badge}</div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${escapeHtml(cloudState.statusMessage)}</p>
+        `;
+      }
+    }
+
+    /**
+     * Initialize Firebase smartly:
+     * 1. Prefer __firebase_config (Preview environment)
+     * 2. Fallback to USER_FIREBASE_CONFIG (GitHub Pages)
+     * 3. Fallback cleanly to LocalStorage if unconfigured
+     */
+    async function initCloudSync() {
+      let activeConfig = null;
+      let resolvedAppId = 'default-app-id';
+
+      try {
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          activeConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+          resolvedAppId = typeof __app_id !== 'undefined' && __app_id ? __app_id : 'default-app-id';
+        } else if (
+          USER_FIREBASE_CONFIG &&
+          USER_FIREBASE_CONFIG.apiKey &&
+          USER_FIREBASE_CONFIG.apiKey !== 'PASTE_API_KEY_HERE' &&
+          USER_FIREBASE_CONFIG.projectId &&
+          USER_FIREBASE_CONFIG.projectId !== 'PASTE_PROJECT_ID_HERE'
+        ) {
+          activeConfig = USER_FIREBASE_CONFIG;
+          resolvedAppId = USER_FIREBASE_CONFIG.projectId || 'default-app-id';
+        }
+      } catch (err) {
+        console.error('Lỗi đọc cấu hình Firebase:', err);
+      }
+
+      if (!activeConfig) {
+        cloudState.enabled = false;
+        cloudState.status = 'local';
+        cloudState.statusMessage = 'Chưa dán mã Firebase trong file HTML. Dữ liệu vẫn hoạt động mượt mà trên trình duyệt này và có thể sao lưu bằng JSON.';
+        updateSyncUI();
+        return;
+      }
+
+      cloudState.status = 'connecting';
+      cloudState.statusMessage = 'Đang thiết lập kết nối an toàn tới Firebase Firestore...';
+      updateSyncUI();
+
+      try {
+        const fbApp = initializeApp(activeConfig);
+        cloudState.db = getFirestore(fbApp);
+        cloudState.auth = getAuth(fbApp);
+        cloudState.appId = resolvedAppId;
+
+        // RULE 3: Always authenticate BEFORE Firestore queries
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(cloudState.auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(cloudState.auth);
+        }
+
+        cloudState.user = cloudState.auth.currentUser;
+        if (!cloudState.user) {
+          throw new Error('Không thể xác thực người dùng ẩn danh.');
+        }
+
+        cloudState.enabled = true;
+        cloudState.status = 'cloud';
+        cloudState.statusMessage = `Kết nối thành công! Mọi thay đổi trong phòng "${appState.syncId}" sẽ tự động đồng bộ tức thì giữa các thiết bị.`;
+        updateSyncUI();
+
+        subscribeToCloudDecks();
+      } catch (err) {
+        console.error('Lỗi khởi tạo Firebase:', err);
+        cloudState.enabled = false;
+        cloudState.status = 'local';
+        cloudState.statusMessage = 'Không thể kết nối Firebase (hãy kiểm tra lại mã cấu hình và đã bật Anonymous Auth trong Firebase Console chưa). Đang dùng chế độ Cục bộ.';
+        updateSyncUI();
+      }
+    }
+
+    function subscribeToCloudDecks() {
+      if (!cloudState.enabled || !cloudState.db || !cloudState.user) return;
+
+      if (cloudState.unsubscribe) {
+        cloudState.unsubscribe();
+        cloudState.unsubscribe = null;
+      }
+
+      // RULE 1 & RULE 2: Strict public/data path & simple collection query (filter/sort in JS)
+      const decksColRef = collection(cloudState.db, 'artifacts', cloudState.appId, 'public', 'data', 'flashmaster_decks');
+
+      cloudState.unsubscribe = onSnapshot(
+        decksColRef,
+        (snapshot) => {
+          const allDocs = [];
+          snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data && data.id) {
+              allDocs.push(data);
+            }
+          });
+
+          // Filter by current Sync Room ID & sort newest first in memory
+          const roomDecks = allDocs
+            .filter(d => (d.syncId || 'default_workspace') === appState.syncId)
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+          // Seed sample decks once if this workspace is completely empty
+          if (roomDecks.length === 0 && !cloudState.seededWorkspaces.has(appState.syncId)) {
+            cloudState.seededWorkspaces.add(appState.syncId);
+            const samples = getSampleDecks().map(d => ({
+              ...d,
+              id: `${d.id}_${appState.syncId.replace(/[^a-zA-Z0-9_-]/g, '')}`
+            }));
+            samples.forEach(sample => syncSingleDeckToCloud(sample));
+            return;
+          }
+
+          cloudState.seededWorkspaces.add(appState.syncId);
+          appState.decks = roomDecks;
+          saveDecksLocal();
+
+          // Re-render safely without interrupting active typing in Editor or Test mode
+          if (appState.view === 'home') {
+            render();
+          } else if (appState.view === 'deck') {
+            const exists = appState.decks.some(d => d.id === appState.activeDeckId);
+            if (!exists) {
+              navigateHome();
+            } else {
+              rebuildFlashcardOrder();
+              render();
+            }
+          }
+        },
+        (error) => {
+          console.error('Firestore onSnapshot error:', error);
+          cloudState.status = 'local';
+          cloudState.statusMessage = 'Mất kết nối đồng bộ thời gian thực (kiểm tra quyền Firestore Rules). Đang hiển thị dữ liệu cục bộ.';
+          updateSyncUI();
+        }
+      );
+    }
+
+    function openSyncModal() {
+      const modal = document.getElementById('syncModal');
+      const input = document.getElementById('syncIdInput');
+      if (input) input.value = appState.syncId;
+      updateSyncUI();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      modal.onclick = (e) => {
+        if (e.target === modal) closeSyncModal();
+      };
+    }
+
+    function closeSyncModal() {
+      const modal = document.getElementById('syncModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function saveSyncId() {
+      const input = document.getElementById('syncIdInput');
+      if (!input) return;
+      const newId = input.value.trim().replace(/\s+/g, '_') || 'default_workspace';
+      appState.syncId = newId;
+      try {
+        localStorage.setItem(SYNC_ID_KEY, newId);
+      } catch (e) {}
+
+      if (cloudState.enabled) {
+        cloudState.statusMessage = `Đang đồng bộ thời gian thực trong phòng "${appState.syncId}".`;
+        subscribeToCloudDecks();
+        showToast(`Đã chuyển sang mã phòng đồng bộ: ${newId}`, 'success');
+      } else {
+        showToast(`Đã lưu mã phòng: ${newId} (sẽ dùng khi kết nối Firebase).`, 'info');
+      }
+      updateSyncUI();
+      closeSyncModal();
+    }
+
+    function exportDecksJSON() {
+      try {
+        const payload = {
+          app: 'FlashMaster',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          syncId: appState.syncId,
+          decks: appState.decks
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `flashmaster-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Đã tải xuống file sao lưu JSON!', 'success');
+      } catch (err) {
+        console.error('Export JSON error:', err);
+        showToast('Không thể xuất file JSON.', 'error');
+      }
+    }
+
+    function triggerImportJSON() {
+      const input = document.getElementById('importJsonInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleImportJSONFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const importedDecks = Array.isArray(parsed) ? parsed : parsed.decks;
+          if (!Array.isArray(importedDecks) || importedDecks.length === 0) {
+            showToast('File JSON không chứa bộ thẻ hợp lệ.', 'error');
+            return;
+          }
+
+          let addedCount = 0;
+          importedDecks.forEach(d => {
+            if (d && d.title && Array.isArray(d.cards)) {
+              const normalizedDeck = {
+                id: d.id || generateId(),
+                title: String(d.title),
+                description: String(d.description || ''),
+                createdAt: d.createdAt || Date.now(),
+                bestMatchTime: typeof d.bestMatchTime === 'number' ? d.bestMatchTime : null,
+                cards: d.cards.map(c => ({
+                  id: c.id || generateId(),
+                  term: String(c.term || ''),
+                  definition: String(c.definition || ''),
+                  starred: Boolean(c.starred),
+                  mastered: Boolean(c.mastered)
+                })).filter(c => c.term && c.definition)
+              };
+
+              const existingIdx = appState.decks.findIndex(x => x.id === normalizedDeck.id);
+              if (existingIdx >= 0) {
+                appState.decks[existingIdx] = normalizedDeck;
+              } else {
+                appState.decks.unshift(normalizedDeck);
+              }
+              saveDecks(normalizedDeck);
+              addedCount++;
+            }
+          });
+
+          showToast(`Đã nhập thành công ${addedCount} bộ thẻ!`, 'success');
+          closeSyncModal();
+          render();
+        } catch (err) {
+          console.error('Import JSON error:', err);
+          showToast('File JSON bị lỗi định dạng.', 'error');
+        }
+      };
+      reader.readAsText(file);
     }
 
     function initTheme() {
@@ -532,7 +975,8 @@
         confirmText: 'Xóa bộ thẻ',
         onConfirm: () => {
           appState.decks = appState.decks.filter(d => d.id !== deckId);
-          saveDecks();
+          saveDecksLocal();
+          deleteDeckFromCloud(deckId);
           showToast('Đã xóa bộ học phần.', 'success');
           if (appState.activeDeckId === deckId) {
             navigateHome();
@@ -766,7 +1210,7 @@
       const card = deck.cards.find(c => c.id === cardId);
       if (!card) return;
       card.starred = !card.starred;
-      saveDecks();
+      saveDecks(deck);
 
       // If filtering by starred and user unstarred the last starred card
       if (appState.fcOnlyStarred && deck.cards.filter(c => c.starred).length === 0) {
@@ -782,7 +1226,7 @@
       const card = deck.cards.find(c => c.id === cardId);
       if (!card) return;
       card.mastered = isMastered;
-      saveDecks();
+      saveDecks(deck);
       if (autoNext && appState.fcCardOrder.length > 1) {
         appState.fcIndex = (appState.fcIndex + 1) % appState.fcCardOrder.length;
         appState.fcFlipped = false;
@@ -800,7 +1244,7 @@
         confirmClass: 'bg-indigo-600 hover:bg-indigo-700',
         onConfirm: () => {
           deck.cards.forEach(c => c.mastered = false);
-          saveDecks();
+          saveDecks(deck);
           showToast('Đã đặt lại tiến độ học tập.', 'success');
           render();
         }
@@ -1120,7 +1564,7 @@
         const card = deck.cards.find(c => c.id === currentId);
         if (card) {
           card.mastered = true;
-          saveDecks();
+          saveDecks(deck);
         }
       } else {
         // Wrong answer: re-insert card later in the queue so user repeats it!
@@ -1608,7 +2052,7 @@
             if (deck.bestMatchTime === null || appState.matchElapsed < deck.bestMatchTime) {
               deck.bestMatchTime = Number(appState.matchElapsed.toFixed(1));
               appState.matchIsNewRecord = true;
-              saveDecks();
+              saveDecks(deck);
             }
           }
           setTimeout(() => render(), 380);
@@ -1860,7 +2304,7 @@
           deck.title = title;
           deck.description = appState.editorDesc.trim();
           deck.cards = validCards;
-          saveDecks();
+          saveDecks(deck);
           showToast('Đã cập nhật bộ học phần!', 'success');
           openDeck(deck.id);
           return;
@@ -1876,7 +2320,7 @@
         cards: validCards
       };
       appState.decks.unshift(newDeck);
-      saveDecks();
+      saveDecks(newDeck);
       showToast('Đã tạo bộ học phần mới!', 'success');
       openDeck(newDeck.id);
     }
@@ -2115,12 +2559,53 @@
     });
 
     /*************************************************************************
-     * 12. BOOTSTRAP APPLICATION
+     * 12. EXPOSE HANDLERS TO WINDOW & BOOTSTRAP APPLICATION
      *************************************************************************/
+    Object.assign(window, {
+      navigateHome,
+      openDeck,
+      openDeckEditor,
+      deleteDeck,
+      toggleTheme,
+      openSyncModal,
+      closeSyncModal,
+      saveSyncId,
+      exportDecksJSON,
+      triggerImportJSON,
+      handleImportJSONFile,
+      handleSearchInput,
+      resetDeckProgress,
+      startLearnMode,
+      startTestMode,
+      startMatchMode,
+      toggleStarredOnlyFlashcards,
+      toggleShuffleFlashcards,
+      flipFlashcard,
+      speakText,
+      toggleCardStar,
+      setCardMastered,
+      prevFlashcard,
+      nextFlashcard,
+      setTermListFilter,
+      answerLearnOption,
+      continueLearnMode,
+      updateTestAnswer,
+      submitTest,
+      handleMatchTileClick,
+      saveEditorDeck,
+      updateEditorField,
+      toggleImportBox,
+      processQuickImport,
+      removeEditorCard,
+      updateEditorCard,
+      addEditorCard
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       initTheme();
-      loadDecks();
+      loadDecksLocal();
       render();
+      initCloudSync();
     });
   </script>
 </body>
